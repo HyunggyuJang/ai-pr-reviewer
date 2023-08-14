@@ -2,6 +2,7 @@
   "name": "openai-pr-reviewer",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "OpenAI-based PR Reviewer and Summarizer.",
   "main": "lib/main.js",
   "scripts": {
@@ -12,7 +13,8 @@
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
     "test": "jest",
-    "all": "npm run build && npm run format && npm run lint && npm run package && npm test"
+    "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
+    "start": "NODE_OPTIONS='--experimental-specifier-resolution=node' node lib/main.js"
   },
   "repository": {
     "type": "git",
@@ -43,6 +45,7 @@
     "@typescript-eslint/parser": "^5.59.6",
     "@vercel/ncc": "^0.36.1",
     "chatgpt": "^5.2.5",
+    "dotenv": "^16.3.1",
     "eslint": "^8.41.0",
     "eslint-config-standard-with-typescript": "^36.0.0",
     "eslint-plugin-github": "^4.6.1",

@@ -1,11 +1,9 @@
-import {error, info, warning} from '@actions/core'
-// eslint-disable-next-line camelcase
-import {context as github_context} from '@actions/github'
+import {error, info, warn} from 'console'
+import {getContext} from './context'
 import pLimit from 'p-limit'
 import {type Bot} from './bot'
 import {
   Commenter,
-  COMMENT_REPLY_TAG,
   RAW_SUMMARY_END_TAG,
   RAW_SUMMARY_START_TAG,
   SHORT_SUMMARY_END_TAG,
@@ -17,9 +15,9 @@ import {octokit} from './octokit'
 import {type Options} from './options'
 import {type Prompts} from './prompts'
 import {getTokenCount} from './tokenizer'
+import {components} from '@octokit/openapi-types'
 
-// eslint-disable-next-line camelcase
-const context = github_context
+const context = await getContext()
 const repo = context.repo
 
 const ignoreKeyword = '@coderabbitai: ignore'
@@ -39,13 +37,13 @@ export const codeReview = async (
     context.eventName !== 'pull_request' &&
     context.eventName !== 'pull_request_target'
   ) {
-    warning(
+    warn(
       `Skipped: current event is ${context.eventName}, only support pull_request event`
     )
     return
   }
   if (context.payload.pull_request == null) {
-    warning('Skipped: context.payload.pull_request is null')
+    warn('Skipped: context.payload.pull_request is null')
     return
   }
 
@@ -69,7 +67,8 @@ export const codeReview = async (
   // get SUMMARIZE_TAG message
   const existingSummarizeCmt = await commenter.findCommentWithTag(
     SUMMARIZE_TAG,
-    context.payload.pull_request.number
+    context.payload.pull_request.number,
+    true
   )
   let existingCommitIdsBlock = ''
   let existingSummarizeCmtBody = ''
@@ -107,7 +106,7 @@ export const codeReview = async (
   }
 
   // Fetch the diff between the highest reviewed commit and the latest commit of the PR branch
-  const incrementalDiff = await octokit.repos.compareCommits({
+  const incrementalDiff = await octokit.rest.repos.compareCommits({
     owner: repo.owner,
     repo: repo.repo,
     base: highestReviewedCommitId,
@@ -115,7 +114,7 @@ export const codeReview = async (
   })
 
   // Fetch the diff between the target branch's base commit and the latest commit of the PR branch
-  const targetBranchDiff = await octokit.repos.compareCommits({
+  const targetBranchDiff = await octokit.rest.repos.compareCommits({
     owner: repo.owner,
     repo: repo.repo,
     base: context.payload.pull_request.base.sha,
@@ -126,7 +125,7 @@ export const codeReview = async (
   const targetBranchFiles = targetBranchDiff.data.files
 
   if (incrementalFiles == null || targetBranchFiles == null) {
-    warning('Skipped: files data is missing')
+    warn('Skipped: files data is missing')
     return
   }
 
@@ -138,7 +137,7 @@ export const codeReview = async (
   )
 
   if (files.length === 0) {
-    warning('Skipped: files is null')
+    warn('Skipped: files is null')
     return
   }
 
@@ -155,14 +154,14 @@ export const codeReview = async (
   }
 
   if (filterSelectedFiles.length === 0) {
-    warning('Skipped: filterSelectedFiles is null')
+    warn('Skipped: filterSelectedFiles is null')
     return
   }
 
   const commits = incrementalDiff.data.commits
 
   if (commits.length === 0) {
-    warning('Skipped: commits is null')
+    warn('Skipped: commits is null')
     return
   }
 
@@ -175,11 +174,11 @@ export const codeReview = async (
         // retrieve file contents
         let fileContent = ''
         if (context.payload.pull_request == null) {
-          warning('Skipped: context.payload.pull_request is null')
+          warn('Skipped: context.payload.pull_request is null')
           return null
         }
         try {
-          const contents = await octokit.repos.getContent({
+          const contents = await octokit.rest.repos.getContent({
             owner: repo.owner,
             repo: repo.repo,
             path: file.filename,
@@ -189,17 +188,19 @@ export const codeReview = async (
             if (!Array.isArray(contents.data)) {
               if (
                 contents.data.type === 'file' &&
-                contents.data.content != null
+                (contents.data as components['schemas']['content-file'])
+                  .content != null
               ) {
                 fileContent = Buffer.from(
-                  contents.data.content,
+                  (contents.data as components['schemas']['content-file'])
+                    .content,
                   'base64'
                 ).toString()
               }
             }
           }
         } catch (e: any) {
-          warning(
+          warn(
             `Failed to get file contents: ${
               e as string
             }. This is OK if it's a new file.`
@@ -302,7 +303,12 @@ ${
   )
 
   // add in progress status to the summarize comment
-  await commenter.comment(`${inProgressSummarizeCmt}`, SUMMARIZE_TAG, 'replace')
+  await commenter.comment(
+    `${inProgressSummarizeCmt}`,
+    SUMMARIZE_TAG,
+    'replace',
+    true
+  )
 
   const summariesFailed: string[] = []
 
@@ -314,7 +320,7 @@ ${
     info(`summarize: ${filename}`)
     const ins = inputs.clone()
     if (fileDiff.length === 0) {
-      warning(`summarize: file_diff is empty, skip ${filename}`)
+      warn(`summarize: file_diff is empty, skip ${filename}`)
       summariesFailed.push(`${filename} (empty diff)`)
       return null
     }
@@ -364,7 +370,7 @@ ${
         return [filename, summarizeResp, true]
       }
     } catch (e: any) {
-      warning(`summarize: error from openai: ${e as string}`)
+      warn(`summarize: error from openai: ${e as string}`)
       summariesFailed.push(`${filename} (error from openai: ${e as string})})`)
       return null
     }
@@ -405,7 +411,7 @@ ${filename}: ${summary}
         {}
       )
       if (summarizeResp === '') {
-        warning('summarize: nothing obtained from openai')
+        warn('summarize: nothing obtained from openai')
       } else {
         inputs.rawSummary = summarizeResp
       }
@@ -435,10 +441,11 @@ ${filename}: ${summary}
       try {
         await commenter.updateDescription(
           context.payload.pull_request.number,
-          message
+          message,
+          true
         )
       } catch (e: any) {
-        warning(`release notes: error from github: ${e.message as string}`)
+        warn(`release notes: error from github: ${e.message as string}`)
       }
     }
   }
@@ -541,7 +548,7 @@ ${
       let patchesPacked = 0
       for (const [startLine, endLine, patch] of patches) {
         if (context.payload.pull_request == null) {
-          warning('No pull request found, skipping.')
+          warn('No pull request found, skipping.')
           continue
         }
         // see if we can pack more patches into this request
@@ -562,8 +569,7 @@ ${
             context.payload.pull_request.number,
             filename,
             startLine,
-            endLine,
-            COMMENT_REPLY_TAG
+            endLine
           )
 
           if (allChains.length > 0) {
@@ -571,7 +577,7 @@ ${
             commentChain = allChains
           }
         } catch (e: any) {
-          warning(
+          warn(
             `Failed to get comments: ${e as string}, skipping. backtrace: ${
               e.stack as string
             }`
@@ -630,13 +636,13 @@ ${commentChain}
               continue
             }
             if (context.payload.pull_request == null) {
-              warning('No pull request found, skipping.')
+              warn('No pull request found, skipping.')
               continue
             }
 
             try {
               reviewCount += 1
-              await commenter.bufferReviewComment(
+              commenter.bufferReviewComment(
                 filename,
                 review.startLine,
                 review.endLine,
@@ -647,7 +653,7 @@ ${commentChain}
             }
           }
         } catch (e: any) {
-          warning(
+          warn(
             `Failed to review: ${e as string}, skipping. backtrace: ${
               e.stack as string
             }`
@@ -740,7 +746,7 @@ ${
   }
 
   // post the final summary comment
-  await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, 'replace')
+  await commenter.comment(`${summarizeComment}`, SUMMARIZE_TAG, 'replace', true)
 }
 
 const splitPatch = (patch: string | null | undefined): string[] => {

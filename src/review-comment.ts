@@ -94,7 +94,7 @@ export const handleReviewComment = async (
       let fileDiff = ''
       try {
         // get diff for this file by comparing the base and head commits
-        const diffAll = await octokit.repos.compareCommits({
+        const diffAll = await octokit.rest.repos.compareCommits({
           owner: repo.owner,
           repo: repo.repo,
           base: context.payload.pull_request.base.sha,
