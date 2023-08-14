@@ -9,12 +9,13 @@ const context = {
     repo: process.env.repo!
   },
   pullNumber: Number(process.env.pull_number!),
+  commentId: process.env.comment_id,
   targetRepo: {
     owner: process.env.target_owner!,
     repo: process.env.target_repo!,
     prMap: JSON.parse(process.env.pr_map!) as Record<number, number>
   },
-  eventName: 'pull_request',
+  eventName: process.env.GITHUB_EVENT_NAME!,
   payload: {
     // eslint-disable-next-line camelcase
     pull_request: {} as Awaited<
@@ -25,28 +26,45 @@ const context = {
     // eslint-disable-next-line camelcase
     pull_request: {} as Awaited<
       ReturnType<typeof octokit.rest.pulls.get>
+    >['data'],
+    comment: {} as Awaited<
+      ReturnType<typeof octokit.rest.pulls.getReviewComment>
     >['data']
   }
 }
 
 export async function getContext(): Promise<typeof context> {
-  if (context.payload.pull_request.number) return context
-  const pr = await octokit.rest.pulls.get({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
+  if (!context.payload.pull_request.number) {
+    const pr = await octokit.rest.pulls.get({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      // eslint-disable-next-line camelcase
+      pull_number: context.pullNumber
+    })
+    const targetPr = await octokit.rest.pulls.get({
+      owner: context.targetRepo.owner,
+      repo: context.targetRepo.repo,
+      // eslint-disable-next-line camelcase
+      pull_number: context.targetRepo.prMap[context.pullNumber]
+    })
     // eslint-disable-next-line camelcase
-    pull_number: context.pullNumber
-  })
-  const targetPr = await octokit.rest.pulls.get({
-    owner: context.targetRepo.owner,
-    repo: context.targetRepo.repo,
+    context.payload.pull_request = pr.data
     // eslint-disable-next-line camelcase
-    pull_number: context.targetRepo.prMap[context.pullNumber]
-  })
-  // eslint-disable-next-line camelcase
-  context.payload.pull_request = pr.data
-  // eslint-disable-next-line camelcase
-  context.targetPayload.pull_request = targetPr.data
+    context.targetPayload.pull_request = targetPr.data
+  }
+  if (
+    context.eventName === 'pull_request_review_comment' &&
+    context.commentId &&
+    !context.targetPayload.comment.id
+  ) {
+    const comment = await octokit.rest.pulls.getReviewComment({
+      owner: context.targetRepo.owner,
+      repo: context.targetRepo.repo,
+      // eslint-disable-next-line camelcase
+      comment_id: Number(context.commentId)
+    })
+    context.targetPayload.comment = comment.data
+  }
   return context
 }
 

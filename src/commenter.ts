@@ -394,7 +394,8 @@ ${statusMsg}
   async reviewCommentReply(
     pullNumber: number,
     topLevelComment: any,
-    message: string
+    message: string,
+    fromTargetRepo: boolean = false
   ) {
     const reply = `${COMMENT_GREETING}
 
@@ -402,13 +403,17 @@ ${message}
 
 ${COMMENT_REPLY_TAG}
 `
+    const repo_ = fromTargetRepo ? targetRepo : repo
+    const pullNumber_ = fromTargetRepo
+      ? targetRepo.prMap[pullNumber]
+      : pullNumber
     try {
       // Post the reply to the user comment
       await octokit.rest.pulls.createReplyForReviewComment({
-        owner: repo.owner,
-        repo: repo.repo,
+        owner: repo_.owner,
+        repo: repo_.repo,
         // eslint-disable-next-line camelcase
-        pull_number: pullNumber,
+        pull_number: pullNumber_,
         body: reply,
         // eslint-disable-next-line camelcase
         comment_id: topLevelComment.id
@@ -417,10 +422,10 @@ ${COMMENT_REPLY_TAG}
       warn(`Failed to reply to the top-level comment ${error}`)
       try {
         await octokit.rest.pulls.createReplyForReviewComment({
-          owner: repo.owner,
-          repo: repo.repo,
+          owner: repo_.owner,
+          repo: repo_.repo,
           // eslint-disable-next-line camelcase
-          pull_number: pullNumber,
+          pull_number: pullNumber_,
           body: `Could not post the reply to the top-level comment due to the following error: ${error}`,
           // eslint-disable-next-line camelcase
           comment_id: topLevelComment.id
@@ -437,8 +442,8 @@ ${COMMENT_REPLY_TAG}
           COMMENT_REPLY_TAG
         )
         await octokit.rest.pulls.updateReviewComment({
-          owner: repo.owner,
-          repo: repo.repo,
+          owner: repo_.owner,
+          repo: repo_.repo,
           // eslint-disable-next-line camelcase
           comment_id: topLevelComment.id,
           body: newBody
@@ -537,9 +542,16 @@ ${chain}
     return conversationChain.join('\n---\n')
   }
 
-  async getCommentChain(pullNumber: number, comment: any) {
+  async getCommentChain(
+    pullNumber: number,
+    comment: any,
+    fromTargetRepo: boolean = false
+  ) {
     try {
-      const reviewComments = await this.listReviewComments(pullNumber)
+      const reviewComments = await this.listReviewComments(
+        pullNumber,
+        fromTargetRepo
+      )
       const topLevelComment = await this.getTopLevelComment(
         reviewComments,
         comment
@@ -577,21 +589,28 @@ ${chain}
   }
 
   private reviewCommentsCache: Record<number, any[]> = {}
+  private reviewTargetCommentsCache: Record<number, any[]> = {}
 
-  async listReviewComments(target: number) {
-    if (this.reviewCommentsCache[target]) {
-      return this.reviewCommentsCache[target]
+  async listReviewComments(target: number, fromTargetRepo: boolean = false) {
+    const reviewCommentsCache = fromTargetRepo
+      ? this.reviewTargetCommentsCache
+      : this.reviewCommentsCache
+    if (reviewCommentsCache[target]) {
+      return reviewCommentsCache[target]
     }
+
+    const repo_ = fromTargetRepo ? targetRepo : repo
+    const target_ = fromTargetRepo ? targetRepo.prMap[target] : target
 
     const allComments: any[] = []
     let page = 1
     try {
       for (;;) {
         const {data: comments} = await octokit.rest.pulls.listReviewComments({
-          owner: repo.owner,
-          repo: repo.repo,
+          owner: repo_.owner,
+          repo: repo_.repo,
           // eslint-disable-next-line camelcase
-          pull_number: target,
+          pull_number: target_,
           page,
           // eslint-disable-next-line camelcase
           per_page: 100
@@ -603,7 +622,7 @@ ${chain}
         }
       }
 
-      this.reviewCommentsCache[target] = allComments
+      reviewCommentsCache[target] = allComments
       return allComments
     } catch (e) {
       warn(`Failed to list review comments: ${e}`)

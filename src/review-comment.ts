@@ -1,6 +1,5 @@
-import {info, warning} from '@actions/core'
-// eslint-disable-next-line camelcase
-import {context as github_context} from '@actions/github'
+import {info, warn} from 'console'
+import {getContext} from './context'
 import {type Bot} from './bot'
 import {
   Commenter,
@@ -14,9 +13,8 @@ import {type Options} from './options'
 import {type Prompts} from './prompts'
 import {getTokenCount} from './tokenizer'
 
-// eslint-disable-next-line camelcase
-const context = github_context
-const repo = context.repo
+const context = await getContext()
+const repo = context.targetRepo
 const ASK_BOT = '@coderabbitai'
 
 export const handleReviewComment = async (
@@ -28,27 +26,24 @@ export const handleReviewComment = async (
   const inputs: Inputs = new Inputs()
 
   if (context.eventName !== 'pull_request_review_comment') {
-    warning(
+    warn(
       `Skipped: ${context.eventName} is not a pull_request_review_comment event`
     )
     return
   }
 
   if (!context.payload) {
-    warning(`Skipped: ${context.eventName} event is missing payload`)
+    warn(`Skipped: ${context.eventName} event is missing payload`)
     return
   }
 
-  const comment = context.payload.comment
+  const comment = context.targetPayload.comment
   if (comment == null) {
-    warning(`Skipped: ${context.eventName} event is missing comment`)
+    warn(`Skipped: ${context.eventName} event is missing comment`)
     return
   }
-  if (
-    context.payload.pull_request == null ||
-    context.payload.repository == null
-  ) {
-    warning(`Skipped: ${context.eventName} event is missing pull_request`)
+  if (context.payload.pull_request == null) {
+    warn(`Skipped: ${context.eventName} event is missing pull_request`)
     return
   }
   inputs.title = context.payload.pull_request.title
@@ -56,12 +51,6 @@ export const handleReviewComment = async (
     inputs.description = commenter.getDescription(
       context.payload.pull_request.body
     )
-  }
-
-  // check if the comment was created and not edited or deleted
-  if (context.payload.action !== 'created') {
-    warning(`Skipped: ${context.eventName} event is not created`)
-    return
   }
 
   // Check if the comment is not from the bot itself
@@ -76,10 +65,10 @@ export const handleReviewComment = async (
     inputs.filename = comment.path
 
     const {chain: commentChain, topLevelComment} =
-      await commenter.getCommentChain(pullNumber, comment)
+      await commenter.getCommentChain(pullNumber, comment, true)
 
     if (!topLevelComment) {
-      warning('Failed to find the top-level comment to reply to')
+      warn('Failed to find the top-level comment to reply to')
       return
     }
 
@@ -97,8 +86,8 @@ export const handleReviewComment = async (
         const diffAll = await octokit.rest.repos.compareCommits({
           owner: repo.owner,
           repo: repo.repo,
-          base: context.payload.pull_request.base.sha,
-          head: context.payload.pull_request.head.sha
+          base: context.targetPayload.pull_request.base.sha,
+          head: context.targetPayload.pull_request.head.sha
         })
         if (diffAll.data) {
           const files = diffAll.data.files
@@ -110,7 +99,7 @@ export const handleReviewComment = async (
           }
         }
       } catch (error) {
-        warning(`Failed to get file diff: ${error}, skipping.`)
+        warn(`Failed to get file diff: ${error}, skipping.`)
       }
 
       // use file diff if no diff was found in the comment
@@ -122,7 +111,8 @@ export const handleReviewComment = async (
           await commenter.reviewCommentReply(
             pullNumber,
             topLevelComment,
-            'Cannot reply to this comment as diff could not be found.'
+            'Cannot reply to this comment as diff could not be found.',
+            true
           )
           return
         }
@@ -135,7 +125,8 @@ export const handleReviewComment = async (
         await commenter.reviewCommentReply(
           pullNumber,
           topLevelComment,
-          'Cannot reply to this comment as diff being commented is too large and exceeds the token limit.'
+          'Cannot reply to this comment as diff being commented is too large and exceeds the token limit.',
+          true
         )
         return
       }
@@ -157,7 +148,8 @@ export const handleReviewComment = async (
       // get summary of the PR
       const summary = await commenter.findCommentWithTag(
         SUMMARIZE_TAG,
-        pullNumber
+        pullNumber,
+        true
       )
       if (summary) {
         // pack short summary into the inputs if it is not too long
@@ -174,7 +166,12 @@ export const handleReviewComment = async (
 
       const [reply] = await heavyBot.chat(prompts.renderComment(inputs), {})
 
-      await commenter.reviewCommentReply(pullNumber, topLevelComment, reply)
+      await commenter.reviewCommentReply(
+        pullNumber,
+        topLevelComment,
+        reply,
+        true
+      )
     }
   } else {
     info(`Skipped: ${context.eventName} event is from the bot itself`)
