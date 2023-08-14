@@ -15,6 +15,7 @@ export class Options {
   openaiHeavyModel: string
   openaiModelTemperature: number
   openaiRetries: number
+  openaiMinTimeout: number
   openaiTimeoutMS: number
   openaiConcurrencyLimit: number
   githubConcurrencyLimit: number
@@ -36,6 +37,7 @@ export class Options {
     openaiHeavyModel = 'gpt-3.5-turbo',
     openaiModelTemperature = '0.0',
     openaiRetries = '3',
+    openaiMinTimeout = '1000',
     openaiTimeoutMS = '120000',
     openaiConcurrencyLimit = '6',
     githubConcurrencyLimit = '6',
@@ -54,6 +56,7 @@ export class Options {
     this.openaiHeavyModel = openaiHeavyModel
     this.openaiModelTemperature = parseFloat(openaiModelTemperature)
     this.openaiRetries = parseInt(openaiRetries)
+    this.openaiMinTimeout = parseInt(openaiMinTimeout)
     this.openaiTimeoutMS = parseInt(openaiTimeoutMS)
     this.openaiConcurrencyLimit = parseInt(openaiConcurrencyLimit)
     this.githubConcurrencyLimit = parseInt(githubConcurrencyLimit)
@@ -77,6 +80,7 @@ export class Options {
     info(`openai_heavy_model: ${this.openaiHeavyModel}`)
     info(`openai_model_temperature: ${this.openaiModelTemperature}`)
     info(`openai_retries: ${this.openaiRetries}`)
+    info(`openai_min_timeout: ${this.openaiMinTimeout}`)
     info(`openai_timeout_ms: ${this.openaiTimeoutMS}`)
     info(`openai_concurrency_limit: ${this.openaiConcurrencyLimit}`)
     info(`github_concurrency_limit: ${this.githubConcurrencyLimit}`)

@@ -87,7 +87,8 @@ IMPORTANT: Entire response must be in the language with ISO code: ${options.lang
       }
       try {
         response = await pRetry(() => this.api!.sendMessage(message, opts), {
-          retries: this.options.openaiRetries
+          retries: this.options.openaiRetries,
+          minTimeout: this.options.openaiMinTimeout
         })
       } catch (e: unknown) {
         if (e instanceof ChatGPTError) {

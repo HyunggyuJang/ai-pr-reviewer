@@ -178,6 +178,7 @@ disregarding minor issues.
     process.env.openai_heavy_model ?? 'gpt-3.5-turbo-16k',
     process.env.openai_model_temperature ?? '0.05',
     process.env.openai_retries ?? '5',
+    process.env.openai_min_timeout ?? '1000',
     process.env.openai_timeout_ms ?? '360000',
     process.env.openai_concurrency_limit ?? '6',
     process.env.github_concurrency_limit ?? '6',
