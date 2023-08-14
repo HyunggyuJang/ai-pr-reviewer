@@ -259,7 +259,7 @@ ${COMMENT_TAG}`
       ? targetRepo.prMap[pullNumber]
       : pullNumber
     const commitId_ = fromTargetRepo
-      ? context.payload.pull_request.head.sha
+      ? context.targetPayload.pull_request.head.sha
       : commitId
     const body = `${COMMENT_GREETING}
 

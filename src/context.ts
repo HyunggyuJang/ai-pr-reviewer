@@ -20,6 +20,12 @@ const context = {
     pull_request: {} as Awaited<
       ReturnType<typeof octokit.rest.pulls.get>
     >['data']
+  },
+  targetPayload: {
+    // eslint-disable-next-line camelcase
+    pull_request: {} as Awaited<
+      ReturnType<typeof octokit.rest.pulls.get>
+    >['data']
   }
 }
 
@@ -31,8 +37,16 @@ export async function getContext(): Promise<typeof context> {
     // eslint-disable-next-line camelcase
     pull_number: context.pullNumber
   })
+  const targetPr = await octokit.rest.pulls.get({
+    owner: context.targetRepo.owner,
+    repo: context.targetRepo.repo,
+    // eslint-disable-next-line camelcase
+    pull_number: context.targetRepo.prMap[context.pullNumber]
+  })
   // eslint-disable-next-line camelcase
   context.payload.pull_request = pr.data
+  // eslint-disable-next-line camelcase
+  context.targetPayload.pull_request = targetPr.data
   return context
 }
 
