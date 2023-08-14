@@ -19,7 +19,6 @@ import {components} from '@octokit/openapi-types'
 
 const context = await getContext()
 const repo = context.repo
-
 const ignoreKeyword = '@coderabbitai: ignore'
 
 export const codeReview = async (
@@ -741,7 +740,8 @@ ${
     await commenter.submitReview(
       context.payload.pull_request.number,
       commits[commits.length - 1].sha,
-      statusMsg
+      statusMsg,
+      true
     )
   }
 
