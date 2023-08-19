@@ -4,6 +4,8 @@ import pLimit from 'p-limit'
 import {type Bot} from './bot'
 import {
   Commenter,
+  LONG_SUMMARY_END_TAG,
+  LONG_SUMMARY_START_TAG,
   RAW_SUMMARY_END_TAG,
   RAW_SUMMARY_START_TAG,
   SHORT_SUMMARY_END_TAG,
@@ -74,6 +76,7 @@ export const codeReview = async (
   if (existingSummarizeCmt != null) {
     existingSummarizeCmtBody = existingSummarizeCmt.body
     inputs.rawSummary = commenter.getRawSummary(existingSummarizeCmtBody)
+    inputs.longSummary = commenter.getLongSummary(existingSummarizeCmtBody)
     inputs.shortSummary = commenter.getShortSummary(existingSummarizeCmtBody)
     existingCommitIdsBlock = commenter.getReviewedCommitIdsBlock(
       existingSummarizeCmtBody
@@ -412,7 +415,7 @@ ${filename}: ${summary}
       if (summarizeResp === '') {
         warn('summarize: nothing obtained from openai')
       } else {
-        inputs.rawSummary = summarizeResp
+        inputs.longSummary = summarizeResp
       }
     }
   }
@@ -460,6 +463,9 @@ ${filename}: ${summary}
 ${RAW_SUMMARY_START_TAG}
 ${inputs.rawSummary}
 ${RAW_SUMMARY_END_TAG}
+${LONG_SUMMARY_START_TAG}
+${inputs.longSummary}
+${LONG_SUMMARY_END_TAG}
 ${SHORT_SUMMARY_START_TAG}
 ${inputs.shortSummary}
 ${SHORT_SUMMARY_END_TAG}

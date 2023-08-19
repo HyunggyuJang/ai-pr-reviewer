@@ -3,6 +3,7 @@ export class Inputs {
   title: string
   description: string
   rawSummary: string
+  longSummary: string
   shortSummary: string
   filename: string
   fileContent: string
@@ -17,6 +18,7 @@ export class Inputs {
     title = 'no title provided',
     description = 'no description provided',
     rawSummary = '',
+    longSummary = '',
     shortSummary = '',
     filename = '',
     fileContent = 'file contents cannot be provided',
@@ -30,6 +32,7 @@ export class Inputs {
     this.title = title
     this.description = description
     this.rawSummary = rawSummary
+    this.longSummary = longSummary
     this.shortSummary = shortSummary
     this.filename = filename
     this.fileContent = fileContent
@@ -46,6 +49,7 @@ export class Inputs {
       this.title,
       this.description,
       this.rawSummary,
+      this.longSummary,
       this.shortSummary,
       this.filename,
       this.fileContent,
@@ -72,6 +76,9 @@ export class Inputs {
     }
     if (this.rawSummary) {
       content = content.replace('$raw_summary', this.rawSummary)
+    }
+    if (this.longSummary) {
+      content = content.replace('$longSummary', this.longSummary)
     }
     if (this.shortSummary) {
       content = content.replace('$short_summary', this.shortSummary)

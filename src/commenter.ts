@@ -34,6 +34,12 @@ export const RAW_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: ra
 export const RAW_SUMMARY_END_TAG = `-->
 <!-- end of auto-generated comment: raw summary by OSS CodeRabbit -->`
 
+export const LONG_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: long summary by OSS CodeRabbit -->
+<!--
+`
+export const LONG_SUMMARY_END_TAG = `-->
+<!-- end of auto-generated comment: long summary by OSS CodeRabbit -->`
+
 export const SHORT_SUMMARY_START_TAG = `<!-- This is an auto-generated comment: short summary by OSS CodeRabbit -->
 <!--
 `
@@ -107,6 +113,14 @@ ${tag}`
       summary,
       RAW_SUMMARY_START_TAG,
       RAW_SUMMARY_END_TAG
+    )
+  }
+
+  getLongSummary(summary: string) {
+    return this.getContentWithinTags(
+      summary,
+      LONG_SUMMARY_START_TAG,
+      LONG_SUMMARY_END_TAG
     )
   }
 

@@ -65,7 +65,7 @@ $raw_summary
 
   summarizePrefix = `Here is the summary of changes you have generated for files:
       \`\`\`
-      $raw_summary
+      $long_summary
       \`\`\`
 
 `
