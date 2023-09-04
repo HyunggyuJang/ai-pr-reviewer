@@ -78,7 +78,7 @@ export class Inputs {
       content = content.replace('$raw_summary', this.rawSummary)
     }
     if (this.longSummary) {
-      content = content.replace('$longSummary', this.longSummary)
+      content = content.replace('$long_summary', this.longSummary)
     }
     if (this.shortSummary) {
       content = content.replace('$short_summary', this.shortSummary)
